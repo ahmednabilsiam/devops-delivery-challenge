@@ -25,3 +25,8 @@ override.tf.json
 
 # Private keys
 *.pem
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
