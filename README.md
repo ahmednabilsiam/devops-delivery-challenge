@@ -282,31 +282,6 @@ Solution: SSH configuration was adjusted to handle host-key verification consist
 
 Lesson learned: Secure deployment requires correct SSH configuration and carefully scoped network access. SSH should not be exposed broadly to the internet simply to make a pipeline work.
 
-Repository Structure
-
-devops-delivery-challenge/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── cd.yml
-├── ansible/
-│   ├── inventory/
-│   ├── playbooks/
-│   └── roles/
-├── app/
-├── infra/
-├── tests/
-├── docs/
-│   ├── PROJECT_EVIDENCE.md
-│   └── evidence/
-├── Dockerfile
-├── docker-compose.yaml
-├── requirements.txt
-├── sonar-project.properties
-└── README.md
-
-Some directories may contain additional configuration files and modules.
-
 Project Evidence
 
 Screenshots documenting CI/CD runs, SonarQube analysis, container publication, EC2 configuration, and application health checks are available in docs/PROJECT_EVIDENCE.md.
