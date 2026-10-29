@@ -4,9 +4,30 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'ansible/**'
+      - 'infra/**'
+      - '.github/workflows/**'
+      - 'Dockerfile'
+      - 'docker-compose.yaml'
+      - 'requirements.txt'
+      - 'sonar-project.properties'
+
   pull_request:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'ansible/**'
+      - 'infra/**'
+      - '.github/workflows/**'
+      - 'Dockerfile'
+      - 'docker-compose.yaml'
+      - 'requirements.txt'
+      - 'sonar-project.properties'
 
 permissions:
   contents: read
