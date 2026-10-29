@@ -71,15 +71,22 @@ jobs:
           EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
           printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
+
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy with Ansible
         env:
           DOCKER_IMAGE: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.tag }}
         run: |
-          printf '[app_servers]\n%s ansible_user=ubuntu\n' "$EC2_HOST" > /tmp/hosts.ini
+          printf '[app_servers]\n%s ansible_user=%s\n' \
+            "$EC2_HOST" "$EC2_USER" > /tmp/hosts.ini
 
           ansible-playbook \
             -i /tmp/hosts.ini \
@@ -89,3 +96,20 @@ jobs:
             -e "container_restart_policy=unless-stopped" \
             -e "app_port=5000" \
             ansible/playbooks/deploy.yml
+
+      - name: Health check
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error \
+              "http://${EC2_HOST}:5000/health"; then
+              echo "Health check passed."
+              exit 0
+            fi
+
+            echo "Waiting for application... attempt ${attempt}/12"
+            sleep 10
+          done
+
+          echo "Health check failed."
+          exit 1
