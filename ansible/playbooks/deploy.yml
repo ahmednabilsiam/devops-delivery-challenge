@@ -41,3 +41,13 @@
           - "{{ app_port }}:5000"
         pull: never
         recreate: true
+
+    - name: Wait for application health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port | default(5000) }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 12
+      delay: 5
+      until: health_check.status == 200

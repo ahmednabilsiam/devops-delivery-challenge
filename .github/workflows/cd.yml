@@ -79,28 +79,13 @@ jobs:
         env:
           DOCKER_IMAGE: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.tag }}
         run: |
+          printf '[app_servers]\n%s ansible_user=ubuntu\n' "$EC2_HOST" > /tmp/hosts.ini
+
           ansible-playbook \
-            -i "${EC2_HOST}," \
-            -u "${EC2_USER}" \
+            -i /tmp/hosts.ini \
             --private-key ~/.ssh/deploy_key \
             -e "docker_image=${DOCKER_IMAGE}" \
             -e "container_name=devops-delivery" \
             -e "container_restart_policy=unless-stopped" \
             -e "app_port=5000" \
             ansible/playbooks/deploy.yml
-
-      - name: Health check
-        shell: bash
-        run: |
-          for attempt in {1..12}; do
-            if curl --fail --silent --show-error \
-              "http://${EC2_HOST}:5000/health"; then
-              echo "Health check passed."
-              exit 0
-            fi
-            echo "Waiting for application... attempt ${attempt}/12"
-            sleep 10
-          done
-
-          echo "Health check failed."
-          exit 1
