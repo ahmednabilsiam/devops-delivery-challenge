@@ -24,13 +24,21 @@ resource "aws_security_group" "this" {
   description = "Security group for ${var.name}"
   vpc_id      = var.vpc_id
 
-  ingress {
-    description = "SSH from your IP"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_cidr]
-  }
+ingress {
+  description = "SSH access - temporary testing"
+  from_port   = 22
+  to_port     = 22
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
+ingress {
+  description = "Flask application - temporary testing"
+  from_port   = 5000
+  to_port     = 5000
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
 
   ingress {
     description = "SonarQube web UI and GitHub Actions access"
@@ -38,14 +46,6 @@ resource "aws_security_group" "this" {
     to_port     = 9000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Flask application from your IP"
-    from_port   = 5000
-    to_port     = 5000
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_cidr]
   }
 
   egress {
