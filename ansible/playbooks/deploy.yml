@@ -1,0 +1,43 @@
+---
+- name: Deploy DevOps Delivery Application
+  hosts: app_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Verify connection to target server
+      ansible.builtin.ping:
+
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - ca-certificates
+        state: present
+
+    - name: Ensure Docker service is running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull application Docker image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Run application container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: "{{ container_restart_policy }}"
+        published_ports:
+          - "{{ app_port }}:5000"
+        pull: never
+        recreate: true

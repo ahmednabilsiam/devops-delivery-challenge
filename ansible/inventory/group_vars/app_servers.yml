@@ -1,0 +1,6 @@
+---
+app_name: devops-delivery-app
+app_port: 5000
+container_name: devops-delivery-app
+docker_image: ghcr.io/ahmednabilsiam/devops-delivery-challenge:f527d88
+container_restart_policy: unless-stopped

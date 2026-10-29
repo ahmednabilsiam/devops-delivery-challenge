@@ -35,5 +35,5 @@ variable "subnet_id" {
 variable "instance_type" {
   description = "EC2 instance type for the server"
   type        = string
-  default = "m7i-flex.large"
+  default     = "m7i-flex.large"
 }

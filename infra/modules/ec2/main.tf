@@ -24,7 +24,6 @@ resource "aws_security_group" "this" {
   description = "Security group for ${var.name}"
   vpc_id      = var.vpc_id
 
- 
   ingress {
     description = "SSH from your IP"
     from_port   = 22
@@ -34,11 +33,11 @@ resource "aws_security_group" "this" {
   }
 
   ingress {
-    description = "SonarQube web UI from your IP"
+    description = "SonarQube web UI and GitHub Actions access"
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
-    cidr_blocks = [var.allowed_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -48,7 +47,6 @@ resource "aws_security_group" "this" {
     protocol    = "tcp"
     cidr_blocks = [var.allowed_cidr]
   }
-
 
   egress {
     description = "Allow outbound IPv4 traffic"
@@ -80,5 +78,14 @@ resource "aws_instance" "this" {
 
   tags = {
     Name = var.name
+  }
+}
+
+resource "aws_eip" "this" {
+  domain   = "vpc"
+  instance = aws_instance.this.id
+
+  tags = {
+    Name = "${var.name}-eip"
   }
 }

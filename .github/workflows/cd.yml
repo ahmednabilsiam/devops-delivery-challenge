@@ -1,10 +1,9 @@
-
-name: CD - Publish Docker Image
+name: CD - Build, Push and Deploy
 
 on:
   workflow_run:
     workflows:
-      - CI - Test
+      - CI - Test and Quality
     types:
       - completed
     branches:
@@ -15,12 +14,18 @@ permissions:
   packages: write
 
 jobs:
-  publish:
-    name: Build and Publish Image
+  deploy:
+    name: Build, Publish and Deploy
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ubuntu
 
     steps:
       - name: Checkout tested commit
@@ -28,14 +33,14 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Set image name and tag
+      - name: Set image tag
         id: image
         shell: bash
         run: |
-          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${IMAGE_TAG:0:7}" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to GHCR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -48,3 +53,54 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible and Docker collection
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+          ansible-galaxy collection install community.docker
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
+
+      - name: Deploy with Ansible
+        env:
+          DOCKER_IMAGE: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.tag }}
+        run: |
+          ansible-playbook \
+            -i "${EC2_HOST}," \
+            -u "${EC2_USER}" \
+            --private-key ~/.ssh/deploy_key \
+            -e "docker_image=${DOCKER_IMAGE}" \
+            -e "container_name=devops-delivery" \
+            -e "container_restart_policy=unless-stopped" \
+            -e "app_port=5000" \
+            ansible/playbooks/deploy.yml
+
+      - name: Health check
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error \
+              "http://${EC2_HOST}:5000/health"; then
+              echo "Health check passed."
+              exit 0
+            fi
+            echo "Waiting for application... attempt ${attempt}/12"
+            sleep 10
+          done
+
+          echo "Health check failed."
+          exit 1

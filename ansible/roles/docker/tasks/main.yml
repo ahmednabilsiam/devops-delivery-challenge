@@ -1,0 +1,37 @@
+---
+- name: Install Docker and Compose plugin
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure Docker is enabled and running
+  ansible.builtin.service:
+    name: "{{ docker_service_name }}"
+    state: started
+    enabled: true
+
+- name: Create deployment directory
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}"
+    state: directory
+    owner: "{{ deployment_owner }}"
+    group: "{{ deployment_group }}"
+    mode: "0755"
+
+- name: Create application data directory
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}/data"
+    state: directory
+    owner: "{{ deployment_owner }}"
+    group: "{{ deployment_group }}"
+    mode: "0755"
+
+- name: Verify Docker Compose
+  ansible.builtin.command: docker compose version
+  changed_when: false
+
+- name: Verify Docker daemon
+  ansible.builtin.command: docker info
+  changed_when: false

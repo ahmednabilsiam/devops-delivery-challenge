@@ -1,0 +1,70 @@
+---
+- name: Install and maintain SonarQube on the existing EC2
+  hosts: app_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Configure Linux kernel parameters for SonarQube
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-sonarqube.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          vm.max_map_count=524288
+          fs.file-max=131072
+      register: sonarqube_sysctl_config
+
+    - name: Apply Linux kernel parameters
+      ansible.builtin.command: sysctl --system
+      when: sonarqube_sysctl_config.changed
+      changed_when: true
+
+    - name: Create SonarQube deployment directory
+      ansible.builtin.file:
+        path: /opt/sonarqube
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure SonarQube Compose file
+      ansible.builtin.copy:
+        dest: /opt/sonarqube/compose.yaml
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          services:
+            sonarqube:
+              image: sonarqube:community
+              container_name: sonarqube
+              restart: unless-stopped
+              ports:
+                - "9000:9000"
+              environment:
+                SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "false"
+              volumes:
+                - sonarqube_data:/opt/sonarqube/data
+                - sonarqube_extensions:/opt/sonarqube/extensions
+                - sonarqube_logs:/opt/sonarqube/logs
+
+          volumes:
+            sonarqube_data:
+            sonarqube_extensions:
+            sonarqube_logs:
+      register: sonarqube_compose_config
+
+    - name: Validate SonarQube Compose configuration
+      ansible.builtin.command:
+        cmd: docker compose -f /opt/sonarqube/compose.yaml config --quiet
+      changed_when: false
+
+    - name: Start SonarQube and keep it running
+      community.docker.docker_compose_v2:
+        project_src: /opt/sonarqube
+        files:
+          - compose.yaml
+        state: present
+        pull: always
